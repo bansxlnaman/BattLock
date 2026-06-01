@@ -1,7 +1,4 @@
-from crypto.counters.message_counter import (
-    MessageCounter
-)
-
+from crypto.counters.message_counter import MessageCounter
 
 counter = MessageCounter()
 

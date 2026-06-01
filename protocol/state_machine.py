@@ -15,6 +15,7 @@ class ConnectionState(Enum):
 
     ACTIVE_SESSION = 5
 
+
 class BattLockStateMachine:
 
     def __init__(self):
@@ -29,9 +30,7 @@ class BattLockStateMachine:
 
         if self.state == ConnectionState.DISCONNECTED:
 
-            self.state = (
-                ConnectionState.HELLO_RECEIVED
-            )
+            self.state = ConnectionState.HELLO_RECEIVED
 
             return True
 
@@ -41,9 +40,7 @@ class BattLockStateMachine:
 
         if self.state == ConnectionState.HELLO_RECEIVED:
 
-            self.state = (
-                ConnectionState.CERT_VERIFIED
-            )
+            self.state = ConnectionState.CERT_VERIFIED
 
             return True
 
@@ -53,9 +50,7 @@ class BattLockStateMachine:
 
         if self.state == ConnectionState.CERT_VERIFIED:
 
-            self.state = (
-                ConnectionState.CHALLENGE_SENT
-            )
+            self.state = ConnectionState.CHALLENGE_SENT
 
             return True
 
@@ -65,9 +60,7 @@ class BattLockStateMachine:
 
         if self.state == ConnectionState.CHALLENGE_SENT:
 
-            self.state = (
-                ConnectionState.AUTHENTICATED
-            )
+            self.state = ConnectionState.AUTHENTICATED
 
             return True
 
@@ -77,9 +70,7 @@ class BattLockStateMachine:
 
         if self.state == ConnectionState.AUTHENTICATED:
 
-            self.state = (
-                ConnectionState.ACTIVE_SESSION
-            )
+            self.state = ConnectionState.ACTIVE_SESSION
 
             return True
 
@@ -87,13 +78,8 @@ class BattLockStateMachine:
 
     def reset(self):
 
-        self.state = (
-            ConnectionState.DISCONNECTED
-        )
-    
+        self.state = ConnectionState.DISCONNECTED
+
     def telemetry_allowed(self):
 
-        return (
-            self.state ==
-            ConnectionState.ACTIVE_SESSION
-        )
+        return self.state == ConnectionState.ACTIVE_SESSION

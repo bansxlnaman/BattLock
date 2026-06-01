@@ -4,10 +4,7 @@ class ReplayProtection:
 
         self.last_counter = 0
 
-    def validate(
-        self,
-        received_counter: int
-    ) -> bool:
+    def validate(self, received_counter: int) -> bool:
 
         if received_counter <= self.last_counter:
             return False

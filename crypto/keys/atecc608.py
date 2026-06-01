@@ -8,17 +8,10 @@ class ATECC608:
 
         self.connected = True
 
-    def sign(
-        self,
-        data: bytes
-    ):
+    def sign(self, data: bytes):
 
-        raise NotImplementedError(
-            "ATECC608 hardware integration pending"
-        )
+        raise NotImplementedError("ATECC608 hardware integration pending")
 
     def get_public_key(self):
 
-        raise NotImplementedError(
-            "ATECC608 hardware integration pending"
-        )
+        raise NotImplementedError("ATECC608 hardware integration pending")

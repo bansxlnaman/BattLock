@@ -1,8 +1,9 @@
 from crypto.crypto_utils.signatures import (
     generate_keypair,
     sign_message,
-    verify_signature
+    verify_signature,
 )
+
 
 def run_test():
 
@@ -10,16 +11,9 @@ def run_test():
 
     message = b"BattLock Authentication"
 
-    signature = sign_message(
-        private_key,
-        message
-    )
+    signature = sign_message(private_key, message)
 
-    result = verify_signature(
-        public_key,
-        message,
-        signature
-    )
+    result = verify_signature(public_key, message, signature)
 
     print("Signature Valid:", result)
 

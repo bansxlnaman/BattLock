@@ -6,12 +6,7 @@ from datetime import datetime
 
 
 def create_certificate(
-    root_ca,
-    battery_id,
-    manufacturer_id,
-    battery_public_key,
-    issue_date,
-    expiry_date
+    root_ca, battery_id, manufacturer_id, battery_public_key, issue_date, expiry_date
 ):
 
     certificate_data = (
@@ -22,10 +17,7 @@ def create_certificate(
         + expiry_date.encode()
     )
 
-    signature = root_ca.private_key.sign(
-        certificate_data,
-        ec.ECDSA(hashes.SHA256())
-    )
+    signature = root_ca.private_key.sign(certificate_data, ec.ECDSA(hashes.SHA256()))
 
     return Certificate(
         battery_id=battery_id,
@@ -33,28 +25,18 @@ def create_certificate(
         public_key=battery_public_key,
         issue_date=issue_date,
         expiry_date=expiry_date,
-        signature=signature
+        signature=signature,
     )
 
 
-def is_certificate_expired(
-    certificate
-):
+def is_certificate_expired(certificate):
 
-    expiry_date = datetime.strptime(
-        certificate.expiry_date,
-        "%Y-%m-%d"
-    )
+    expiry_date = datetime.strptime(certificate.expiry_date, "%Y-%m-%d")
 
-    return (
-        datetime.now() >
-        expiry_date
-    )
+    return datetime.now() > expiry_date
 
-def verify_certificate(
-    certificate,
-    manufacturer_public_key
-):
+
+def verify_certificate(certificate, manufacturer_public_key):
     if is_certificate_expired(certificate):
         return False
 
@@ -68,9 +50,7 @@ def verify_certificate(
 
     try:
         manufacturer_public_key.verify(
-            certificate.signature,
-            certificate_data,
-            ec.ECDSA(hashes.SHA256())
+            certificate.signature, certificate_data, ec.ECDSA(hashes.SHA256())
         )
 
         return True
@@ -78,7 +58,4 @@ def verify_certificate(
     except InvalidSignature:
         return False
 
-
         return False
-
-    

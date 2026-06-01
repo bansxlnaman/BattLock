@@ -1,7 +1,4 @@
-from protocol.state_machine import (
-    BattLockStateMachine
-)
-
+from protocol.state_machine import BattLockStateMachine
 
 sm = BattLockStateMachine()
 
