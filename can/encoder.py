@@ -1,4 +1,6 @@
 import struct
+import json
+import base64
 
 from can.can_message import CANMessage
 from can.can_ids import (
@@ -63,6 +65,8 @@ def encode_auth_result(result):
         arbitration_id=AUTH_RESULT,
         data=bytes([int(result)])
     )
+
+
 def encode_session_id(session):
 
     return CANMessage(
@@ -70,14 +74,28 @@ def encode_session_id(session):
         data=session.session_id.encode()
     )
 
-def encode_certificate(certificate):
 
-    payload = str(certificate).encode()
+def encode_certificate(certificate):
+    """
+    Serialize a Certificate to a structured JSON CAN payload.
+    Binary fields (public_key, signature) are base64-encoded so they
+    survive the UTF-8 JSON round-trip cleanly.
+    decode_certificate() reconstructs a proper Certificate object.
+    """
+    payload = json.dumps({
+        "battery_id":      certificate.battery_id,
+        "manufacturer_id": certificate.manufacturer_id,
+        "public_key":      base64.b64encode(certificate.public_key).decode(),
+        "issue_date":      certificate.issue_date,
+        "expiry_date":     certificate.expiry_date,
+        "signature":       base64.b64encode(certificate.signature).decode(),
+    }).encode()
 
     return CANMessage(
         arbitration_id=CERTIFICATE,
         data=payload
     )
+
 
 def encode_auth_request():
 

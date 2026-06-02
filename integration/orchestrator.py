@@ -7,17 +7,16 @@ from integration.metrics import MetricsCollector
 
 from crypto.certs.root_ca import RootCA
 from crypto.certs.certificate import (
-create_certificate,
-verify_certificate
+    create_certificate,
 )
 
 from crypto.crypto_utils.key_serialization import (
-serialize_public_key
+    serialize_public_key
 )
 from can.transport import CANBus
 
 from crypto.auth.challenge import (
-create_challenge
+    create_challenge
 )
 from crypto.auth.session import (
     create_session
@@ -26,16 +25,18 @@ from crypto.auth.session import (
 from protocol.session_manager import (
     SessionManager
 )
+from protocol.state_machine import (
+    BattLockStateMachine,
+    ConnectionState,
+)
 
 from crypto.models.battery import Battery
-from crypto.auth.verifier import (
-verify_challenge_response
-)
 
 from crypto.keys.key_manager import KeyManager
 
 from can.simulation.vehicle_node import VehicleNode
 from can.simulation.battery_node import BatteryNode
+
 
 class BattLockOrchestrator:
 
@@ -47,19 +48,45 @@ class BattLockOrchestrator:
 
         self.session_manager = SessionManager()
 
-    def log_can_message(
-        self,
-        frame
-    ):
+        self.state_machine = BattLockStateMachine()
+
+    def log_can_message(self, frame):
 
         payload_size = len(frame.data)
 
+        # Simulated latency placeholder (Phase-1; real timing comes with HW).
         latency = 0.1
 
         self.metrics.record_can(
             payload_size,
             latency
         )
+
+    def _transition(self, transition_name, transition_fn):
+        """
+        Execute a state machine transition.
+        Logs the new state on success; logs an error and returns False on
+        invalid transition so the caller can abort.
+        """
+        result = transition_fn()
+
+        current = self.state_machine.get_state().name
+
+        if result:
+            self.logger.info(
+                f"[STATE] {transition_name} → {current}"
+            )
+        else:
+            self.logger.info(
+                f"[STATE ERROR] Transition '{transition_name}' failed "
+                f"(current state: {current}) — Aborting authentication"
+            )
+
+        return result
+
+    # ------------------------------------------------------------------
+    # Main execution
+    # ------------------------------------------------------------------
 
     def run(self):
 
@@ -91,6 +118,10 @@ class BattLockOrchestrator:
 
         self.logger.info(
             f"Operating System: {platform.system()}"
+        )
+
+        self.logger.info(
+            f"Initial State: {self.state_machine.get_state().name}"
         )
 
         # ==================================================
@@ -149,7 +180,7 @@ class BattLockOrchestrator:
         )
 
         self.logger.info(
-            "Private Key Stored Securely"
+            "Private Key Stored Securely (SoftwareKeys)"
         )
 
         # ==================================================
@@ -168,18 +199,11 @@ class BattLockOrchestrator:
             root_ca=root_ca,
             battery_id="BAT001",
             manufacturer_id="BATTLOCK",
-            battery_public_key = battery_public_key,
-            issue_date=
-            datetime.now().strftime(
-                "%Y-%m-%d"
-            ),
-            expiry_date=
-            (
-                datetime.now()
-                + timedelta(days=365)
-            ).strftime(
-                "%Y-%m-%d"
-            )
+            battery_public_key=battery_public_key,
+            issue_date=datetime.now().strftime("%Y-%m-%d"),
+            expiry_date=(
+                datetime.now() + timedelta(days=365)
+            ).strftime("%Y-%m-%d")
         )
 
         self.metrics.stop(
@@ -201,10 +225,11 @@ class BattLockOrchestrator:
         self.logger.info(
             f"Expiry Date: {certificate.expiry_date}"
         )
+
         battery.certificate = certificate
 
         # ==================================================
-        # PHASE 5 : CAN NETWORK
+        # PHASE 5 : CAN NETWORK STARTUP
         # ==================================================
 
         self.logger.info(
@@ -213,7 +238,10 @@ class BattLockOrchestrator:
 
         bus = CANBus()
 
-        vehicle = VehicleNode(bus=bus)
+        vehicle = VehicleNode(
+            bus=bus,
+            root_ca_public_key=root_ca.public_key
+        )
 
         battery_node = BatteryNode(
             battery,
@@ -232,27 +260,8 @@ class BattLockOrchestrator:
             "Battery Node Registered"
         )
 
-        cert_msg = (
-            battery_node.send_certificate(
-                certificate
-            )
-        )
-
-        bus.send(cert_msg)
-        self.log_can_message(
-            cert_msg
-        )
-
-        received_cert = (
-            bus.receive()
-        )
-
-        self.logger.info(
-            "Certificate sent over CAN"
-        )
-
         # ==================================================
-        # PHASE 6 : AUTH REQUEST
+        # PHASE 6 : AUTH REQUEST  (Vehicle → Battery)
         # ==================================================
 
         self.logger.info(
@@ -260,38 +269,42 @@ class BattLockOrchestrator:
         )
 
         self.logger.info(
-            "\nVehicle -> Battery"
+            "\nVehicle → Battery"
         )
 
         self.logger.info(
-            "CAN ID: 0x100"
+            "CAN ID: 0x100  |  AUTH_REQUEST"
         )
 
-        auth_msg = (
-            vehicle.send_auth_request()
-        )
+        auth_msg = vehicle.send_auth_request()
         bus.send(auth_msg)
         self.log_can_message(auth_msg)
-        received = bus.receive()
-        self.logger.info(
-            f"AUTH_REQUEST SENT: "
-            f"{received.data}"
-        )
 
+        # Battery side consumes the auth-request frame.
+        bus.receive()
 
         # ==================================================
-        # PHASE 7 : CERTIFICATE RESPONSE
+        # PHASE 7 : CERTIFICATE EXCHANGE  (Battery → Vehicle via CAN)
         # ==================================================
 
         self.logger.info(
-            "\nBattery -> Vehicle"
+            "\n[PHASE 7] CERTIFICATE EXCHANGE"
         )
 
         self.logger.info(
-            "CAN ID: 0x104"
+            "\nBattery → Vehicle"
         )
 
-        self.log_can_message(received_cert)
+        self.logger.info(
+            "CAN ID: 0x104  |  CERTIFICATE"
+        )
+
+        cert_msg = battery_node.send_certificate(certificate)
+        bus.send(cert_msg)
+        self.log_can_message(cert_msg)
+
+        received_cert_msg = bus.receive()
+        self.log_can_message(received_cert_msg)
 
         # ==================================================
         # PHASE 8 : CERTIFICATE VERIFICATION
@@ -305,29 +318,37 @@ class BattLockOrchestrator:
             "certificate_verification"
         )
 
-        valid = verify_certificate(
-            certificate,
-            root_ca.public_key
-        )
+        # hello_received() fires when we see the battery's first message.
+        if not self._transition(
+            "hello_received",
+            self.state_machine.hello_received
+        ):
+            return
+
+        cert_valid = vehicle.receive_and_verify_certificate(received_cert_msg)
 
         self.metrics.stop(
             "certificate_verification"
         )
 
-        if not valid:
-
+        if not cert_valid:
             self.logger.info(
-                "Certificate Verification Failed"
+                "Certificate Verification Failed — Aborting"
             )
-
             return
 
         self.logger.info(
             "Certificate Verification Successful"
         )
 
+        if not self._transition(
+            "certificate_verified",
+            self.state_machine.certificate_verified
+        ):
+            return
+
         # ==================================================
-        # PHASE 9 : CHALLENGE GENERATION
+        # PHASE 9 : CHALLENGE GENERATION + CAN TRANSMISSION
         # ==================================================
 
         self.logger.info(
@@ -337,105 +358,90 @@ class BattLockOrchestrator:
         challenge = create_challenge()
 
         self.logger.info(
-            "Challenge Generated"
+            "Challenge Created"
         )
 
-        nonce_msg = vehicle.send_nonce(
-            challenge.nonce
-        )
-
-        bus.send(nonce_msg)
-        self.log_can_message(nonce_msg)
-        received_nonce = (
-            bus.receive()
-        )
-
-        nonce = battery_node.receive_nonce(
-            received_nonce
-        )
-        self.log_can_message(received_nonce)
         self.logger.info(
             f"Nonce Length: {len(challenge.nonce)} bytes"
         )
 
         self.logger.info(
-            "\nVehicle -> Battery"
+            "\nVehicle → Battery"
         )
 
         self.logger.info(
-            "CAN ID: 0x101"
+            "CAN ID: 0x101  |  NONCE + TIMESTAMP"
         )
 
-        self.logger.info(
-            "NONCE"
+        # send_nonce combines nonce + str(timestamp) and stores challenge_data
+        # internally for later signature verification.
+        nonce_msg = vehicle.send_nonce(
+            challenge.nonce,
+            challenge.timestamp
         )
+
+        bus.send(nonce_msg)
+        self.log_can_message(nonce_msg)
+
+        if not self._transition(
+            "challenge_sent",
+            self.state_machine.challenge_sent
+        ):
+            return
 
         # ==================================================
-        # PHASE 10 : SIGNATURE GENERATION
+        # PHASE 10 : BATTERY SIGNS VIA CAN
         # ==================================================
 
         self.logger.info(
-            "\n[PHASE 10] SIGNATURE GENERATION"
+            "\n[PHASE 10] BATTERY SIGNATURE GENERATION"
         )
 
-        challenge_data = (
-            challenge.nonce
-            + str(
-                challenge.timestamp
-            ).encode()
+        # Battery receives the challenge from the CAN bus.
+        received_challenge_msg = bus.receive()
+        self.log_can_message(received_challenge_msg)
+
+        battery_node.receive_nonce(received_challenge_msg)
+
+        self.logger.info(
+            "\nBattery → Vehicle"
+        )
+
+        self.logger.info(
+            "CAN ID: 0x102  |  SIGNATURE"
         )
 
         self.metrics.start(
             "signature_generation"
         )
 
-        signature = battery.sign(
-            challenge_data
-        )
+        # BatteryNode signs the stored challenge_data and encodes the
+        # signature into a CAN message — no direct signing in orchestrator.
+        sig_msg = battery_node.sign_and_respond()
 
         self.metrics.stop(
             "signature_generation"
         )
 
-        self.logger.info(
-            "Challenge Signed"
-        )
-
-        self.logger.info(
-            f"Signature Length: {len(signature)} bytes"
-        )
-
-        self.logger.info(
-            "\nBattery -> Vehicle"
-        )
-
-        self.logger.info(
-            "CAN ID: 0x102"
-        )
-
-        self.logger.info(
-            "SIGNATURE"
-        )
+        bus.send(sig_msg)
+        self.log_can_message(sig_msg)
 
         # ==================================================
-        # PHASE 11 : SIGNATURE VERIFICATION
+        # PHASE 11 : SIGNATURE VERIFICATION VIA CAN
         # ==================================================
 
         self.logger.info(
-            "\n[PHASE 11] CHALLENGE VERIFICATION"
+            "\n[PHASE 11] SIGNATURE VERIFICATION"
         )
 
         self.metrics.start(
             "signature_verification"
         )
 
-        result = (
-            verify_challenge_response(
-                certificate,
-                challenge,
-                signature
-            )
-        )
+        received_sig_msg = bus.receive()
+        self.log_can_message(received_sig_msg)
+
+        result = vehicle.receive_and_verify_signature(received_sig_msg)
 
         self.metrics.stop(
             "signature_verification"
@@ -447,27 +453,29 @@ class BattLockOrchestrator:
                 "Challenge Verification Passed"
             )
 
-            self.logger.info(
-                "\nVehicle -> Battery"
-            )
+            if not self._transition(
+                "authenticated",
+                self.state_machine.authenticated
+            ):
+                return
 
-            self.logger.info(
-                "CAN ID: 0x103"
-            )
+            # ------------------------------------------------------
+            # SESSION ESTABLISHMENT
+            # ------------------------------------------------------
 
-            self.logger.info(
-                "AUTH_RESULT = SUCCESS"
-            )
             self.logger.info(
                 "\nCreating Session..."
             )
+
             session = create_session(
                 battery.identity.battery_id
             )
+
             self.session_manager.add_session(
                 session.session_id,
                 session.battery_id
             )
+
             self.logger.info(
                 f"Session ID: {session.session_id}"
             )
@@ -475,36 +483,29 @@ class BattLockOrchestrator:
             self.logger.info(
                 f"Battery ID: {session.battery_id}"
             )
-            session_msg = (
-                vehicle.send_session_id(
-                    session
-                )
+
+            self.logger.info(
+                "\nVehicle → Battery"
             )
 
+            self.logger.info(
+                "CAN ID: 0x105  |  SESSION_ID"
+            )
+
+            session_msg = vehicle.send_session_id(session)
             self.log_can_message(session_msg)
             bus.send(session_msg)
 
-            received_session = (
-                bus.receive()
-            )
+            received_session = bus.receive()
             self.log_can_message(received_session)
 
-            battery_node.receive_session_id(
-                received_session
-            )
-            self.logger.info(
-                "\nVehicle -> Battery"
-            )
+            battery_node.receive_session_id(received_session)
 
-            self.logger.info(
-                "CAN ID: 0x105"
-            )
-
-            self.logger.info(
-                "SESSION_ID"
-            )
-
-
+            if not self._transition(
+                "session_established",
+                self.state_machine.session_established
+            ):
+                return
 
             self.logger.info(
                 "\nBATTERY AUTHENTICATED"
@@ -514,10 +515,22 @@ class BattLockOrchestrator:
                 "SECURE SESSION ACTIVE"
             )
 
+            self.logger.info(
+                f"Final State: {self.state_machine.get_state().name}"
+            )
+
+            # Verify acceptance test: state must be ACTIVE_SESSION
+            assert self.state_machine.get_state() == ConnectionState.ACTIVE_SESSION, \
+                "ACCEPTANCE TEST FAILED: state machine did not reach ACTIVE_SESSION"
+
+            self.logger.info(
+                "✓ Acceptance Test 1 PASSED: State Machine → ACTIVE_SESSION"
+            )
+
         else:
 
             self.logger.info(
-                "Challenge Verification Failed"
+                "Challenge Verification Failed — Authentication Denied"
             )
 
         # ==================================================
@@ -544,6 +557,7 @@ class BattLockOrchestrator:
         self.logger.info(
             f"Total Execution Time: {total_time:.6f} sec"
         )
+
         report = self.metrics.report()
 
         self.logger.info(
@@ -565,6 +579,7 @@ class BattLockOrchestrator:
             f"Average Latency: "
             f"{report['average_latency_ms']:.2f} ms"
         )
+
         self.metrics.export()
 
         self.logger.info(
