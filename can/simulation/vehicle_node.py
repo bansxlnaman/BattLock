@@ -13,11 +13,13 @@ from can.encoder import (
 )
 from can.decoder import decode_certificate
 
+from can.encoder import encode_auth_request
+
 
 class VehicleNode:
 
-    def __init__(self):
-
+    def __init__(self, bus):
+        self.bus = bus
         self.replay = ReplayProtection()
 
     def receive(self, message):
@@ -55,6 +57,10 @@ class VehicleNode:
         return encode_nonce(
             nonce
         )
+
+    def send_auth_request(self):
+
+        return encode_auth_request()
 
     def receive_signature(self, message):
 

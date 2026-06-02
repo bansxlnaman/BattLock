@@ -1,0 +1,16 @@
+Metric,Value
+root_ca_generation,0.011479875014629215
+battery_key_generation,0.001258542004507035
+certificate_generation,0.006370374991092831
+certificate_verification,0.0018900409922935069
+signature_generation,5.7124998420476913e-05
+signature_verification,0.0007895829621702433
+total_messages,7
+total_bytes,1182
+average_payload,168.85714285714286
+largest_payload,525
+smallest_payload,4
+average_latency_ms,0.1
+max_latency_ms,0.1
+min_latency_ms,0.1
+memory_mb,30.828125

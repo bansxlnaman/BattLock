@@ -18,11 +18,10 @@ from can.encoder import encode_certificate
 
 class BatteryNode:
 
-    def __init__(self, battery):
+    def __init__(self, battery, bus):
 
         self.battery = battery
-
-        # Crypto team's replay counter
+        self.bus = bus
         self.counter = MessageCounter()
 
     def send_identity(self):
@@ -129,5 +128,14 @@ class BatteryNode:
         return encode_certificate(
         certificate
     )
+
+    def sign_challenge(
+        self,
+        challenge_data
+    ):
+
+        return self.battery.sign(
+            challenge_data
+        )
 
 

@@ -78,3 +78,10 @@ def encode_certificate(certificate):
         arbitration_id=CERTIFICATE,
         data=payload
     )
+
+def encode_auth_request():
+
+    return CANMessage(
+        arbitration_id=AUTH_REQUEST,
+        data=b"AUTH"
+    )

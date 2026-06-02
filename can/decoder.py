@@ -52,3 +52,7 @@ def decode_session_id(message):
 def decode_certificate(message):
 
     return message.data.decode()
+
+def decode_auth_request(message):
+
+    return message.data.decode()

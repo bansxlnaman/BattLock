@@ -300,3 +300,96 @@ Recommended attack scenarios:
 Crypto Module Phase 1: COMPLETE
 
 The BattLock authentication stack is fully functional in software simulation and ready for integration with the simulation, attack-testing, and CAN communication modules.
+
+```
+BattLock
+├─ LICENSE
+├─ attacks
+├─ can
+├─ crypto
+│  ├─ __init__.py
+│  ├─ auth
+│  │  ├─ challenge.py
+│  │  ├─ session.py
+│  │  └─ verifier.py
+│  ├─ certs
+│  │  ├─ certificate.py
+│  │  └─ root_ca.py
+│  ├─ counters
+│  │  ├─ message_counter.py
+│  │  └─ replay_protection.py
+│  ├─ crypto_utils
+│  │  ├─ __init__.py
+│  │  ├─ hashing.py
+│  │  ├─ key_serialization.py
+│  │  ├─ random_gen.py
+│  │  └─ signatures.py
+│  ├─ keys
+│  │  ├─ atecc608.py
+│  │  ├─ key_manager.py
+│  │  └─ software_keys.py
+│  ├─ models
+│  │  ├─ auth_result.py
+│  │  ├─ battery_identity.py
+│  │  └─ certificate_model.py
+│  └─ tests
+│     ├─ __init__.py
+│     ├─ test_authentication.py
+│     ├─ test_certificate.py
+│     ├─ test_counter.py
+│     ├─ test_models.py
+│     ├─ test_replay.py
+│     └─ test_signatures.py
+├─ docs
+├─ hardware
+├─ integration
+│  ├─ can_logger.py
+│  ├─ config.py
+│  ├─ logger.py
+│  ├─ metrics.py
+│  ├─ orchestrator.py
+│  ├─ protocol_runner.py
+│  └─ session.py
+├─ logs
+├─ main.py
+├─ performance
+│  └─ crypto
+│     ├─ auth_latency.png
+│     ├─ auth_once.py
+│     ├─ benchmark_auth.py
+│     ├─ benchmark_battery_scalability.py
+│     ├─ benchmark_message_size.py
+│     ├─ benchmark_replay.py
+│     ├─ benchmark_throughput.py
+│     ├─ csv_utils.py
+│     ├─ make_graphs.py
+│     ├─ message_sizes.png
+│     ├─ results.csv
+│     ├─ scalability.png
+│     └─ security_overhead.png
+├─ presentation
+├─ protocol
+│  ├─ messages
+│  │  ├─ auth_challenge.py
+│  │  ├─ auth_response.py
+│  │  ├─ auth_success.py
+│  │  ├─ battery_hello.py
+│  │  └─ telemetry.py
+│  ├─ session_manager.py
+│  ├─ state_machine.py
+│  └─ tests
+│     ├─ test_session_manager.py
+│     └─ test_state_machine.py
+├─ readme.md
+├─ requirements.txt
+├─ run_battlock.py
+├─ simulation
+│  ├─ battery_node.py
+│  ├─ network.py
+│  └─ vehicle_node.py
+├─ simulink
+└─ tests
+   ├─ demo_battlock_crypto.py
+   └─ test_full_authentication.py
+
+```
