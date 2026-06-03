@@ -2,10 +2,10 @@ from crypto.models.battery_identity import BatteryIdentity
 from can.transport import CANBus
 from can.simulation.battery_node import BatteryNode
 from can.simulation.vehicle_node import VehicleNode
-from can.attacks.replay_attack import ReplayAttack
-from can.attacks.injection_attack import InjectionAttack
-from can.attacks.suspension_attack import SuspensionAttack
-from can.attacks.dos_attack import DoSAttack
+from attacks.replay_attack import ReplayAttack
+from attacks.injection_attack import InjectionAttack
+from attacks.suspension_attack import SuspensionAttack
+from attacks.dos_attack import DoSAttack
 from crypto.crypto_utils.random_gen import generate_nonce
 from crypto.crypto_utils.signatures import generate_keypair
 battery_private_key, battery_public_key = generate_keypair()
