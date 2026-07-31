@@ -26,8 +26,7 @@ def test_spoofing_attack_detected():
 
     root_ca = RootCA()
 
-    # Legitimate battery provisioned by the manufacturer.
-    battery_private_key, battery_public_key = generate_keypair()
+    _, battery_public_key = generate_keypair()
 
     certificate = create_certificate(
         root_ca=root_ca,
@@ -42,7 +41,6 @@ def test_spoofing_attack_detected():
 
     challenge = create_challenge()
 
-    # Attacker uses their OWN keypair to forge a response.
     attacker_private_key, _ = generate_keypair()
 
     challenge_data = (
@@ -55,7 +53,6 @@ def test_spoofing_attack_detected():
         challenge_data
     )
 
-    # The vehicle must reject the attacker's signature.
     result = verify_challenge_response(
         certificate,
         challenge,

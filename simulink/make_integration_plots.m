@@ -1,10 +1,4 @@
 function make_integration_plots(verified_csv, plot_path, report_path)
-%MAKE_INTEGRATION_PLOTS  Plot Python verdicts on the Simulink frames and
-%   write a summary report comparing Python vs Simulink decisions.
-%
-%   Input:  verified_csv  = frames_verified.csv from verify_frames.py
-%   Output: plot_path     = integration_plot.png
-%           report_path   = integration_report.csv
 
     T = readtable(verified_csv);
     modes = unique(T.mode)';
@@ -32,7 +26,6 @@ function make_integration_plots(verified_csv, plot_path, report_path)
     saveas(f, plot_path);
     close(f);
 
-    % ---- Report ----
     fid = fopen(report_path, 'w');
     fprintf(fid, 'mode,description,py_auth,model_auth,py_replay,model_replay,py_injection,model_injection,agreement\n');
     for k = 1:numel(modes)

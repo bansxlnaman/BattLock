@@ -1,19 +1,4 @@
 function verify_battlock()
-%VERIFY_BATTLOCK  Run BattLock Simulink model across all attack modes.
-%   Generates verification_plot.png and verification_report.csv in the
-%   current working directory.
-%
-%   Usage:
-%       cd <repo>\simulink
-%       verify_battlock
-%
-%   The model's Attack_Module/Constant5 block sets the attack mode:
-%       0 - No attack (baseline)
-%       1 - Replay attack        (stale message counter)
-%       2 - Signature spoofing   (forged signature value)
-%       3 - Voltage injection    (out-of-range voltage on the bus)
-%       4 - Signature dropping   (signature forced to 0)
-%       5 - Signature dropping   (same as mode 4)
 
     mdl = 'Battlock_System2';
     addpath(fileparts(mfilename('fullpath')));
@@ -21,7 +6,6 @@ function verify_battlock()
     load_system(mdl);
     cleanup = onCleanup(@() close_system(mdl, 0));
 
-    % Ensure the key signals are logged (idempotent).
     sysMap = struct( ...
         'State_Machine',        'state', ...
         'Vehicle_Node',         'AUTH_RESULT', ...
@@ -69,12 +53,8 @@ function verify_battlock()
         fprintf('attack_mode=%d done\n', mode);
     end
 
-    % Reset to baseline.
     set_param(atkBlk, 'Value', '0');
 
-    % ----------------------------------------------------------------
-    % Plot
-    % ----------------------------------------------------------------
     f = figure('Position',[100 100 1400 900], 'Color','w');
     for m = 1:6
         r = results(m);
@@ -98,9 +78,6 @@ function verify_battlock()
     saveas(f, 'verification_plot.png');
     close(f);
 
-    % ----------------------------------------------------------------
-    % CSV report
-    % ----------------------------------------------------------------
     fid = fopen('verification_report.csv', 'w');
     fprintf(fid, 'attack_mode,description,final_state,final_soc,max_replay,max_injection\n');
     for m = 1:6
