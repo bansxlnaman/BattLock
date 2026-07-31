@@ -82,13 +82,13 @@ knowledge required.
 ### What the agreement table means (memorize this)
 
 ```
-mode  attack            py_auth  mdl_auth  agree
-0     No attack           1        1       YES   <- normal battery works
-1     Replay              1        1       YES   <- replay detected
-2     Signature spoof     0        0       YES   <- forged signature rejected
-3     Voltage injection   1        1       YES   <- injected voltage detected
-4     Signature drop      0        0       YES   <- dropped signature rejected
-5     Signature drop      0        0       YES   <- same as 4
+mode  attack                    py_auth  mdl_auth  agree
+0     No attack                   1        1       YES   <- normal battery works
+1     Replay                      1        1       YES   <- replay detected
+2     Signature spoof             0        0       YES   <- forged signature rejected
+3     Voltage injection           1        1       YES   <- injected voltage detected
+4     Signature drop              0        0       YES   <- dropped signature rejected
+5     Spoof + voltage injection   0        0       YES   <- both caught at once
 ```
 
 - `py_*` = verdict from **our Python code** (the real implementation)
@@ -141,6 +141,7 @@ If they want to see attacks live, inside the model:
    - `2` → signature spoofing → auth blocked, no telemetry
    - `3` → voltage injection (999 V) → `injection_detected` lights up
    - `4` → signature dropping → auth blocked
+   - `5` → spoof + voltage injection → auth blocked AND `injection_detected` lights up
 5. Press **Run** (green play button in the model toolbar). Let it run 10 s.
 6. Open the **Dashboard** subsystem and watch the displays/scopes.
 

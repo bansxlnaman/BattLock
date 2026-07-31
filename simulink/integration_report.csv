@@ -4,4 +4,4 @@ mode,description,py_auth,model_auth,py_replay,model_replay,py_injection,model_in
 2,Spoof Sig,0,0,0,0,0,0,true
 3,Voltage Inj,1,1,0,0,1,1,true
 4,Drop Sig,0,0,0,0,0,0,true
-5,Drop Sig,0,0,0,0,0,0,true
+5,Spoof + Inj,0,0,0,0,1,1,true

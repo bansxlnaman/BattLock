@@ -5,7 +5,7 @@ function make_integration_plots(verified_csv, plot_path, report_path)
 
     descriptions = containers.Map(...
         {0,1,2,3,4,5}, ...
-        {'Normal','Replay','Spoof Sig','Voltage Inj','Drop Sig','Drop Sig'});
+        {'Normal','Replay','Spoof Sig','Voltage Inj','Drop Sig','Spoof + Inj'});
 
     f = figure('Position',[100 100 1400 900], 'Color','w');
     for k = 1:numel(modes)

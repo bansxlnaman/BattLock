@@ -70,7 +70,7 @@ def verify_frames(frames_path, out_path):
         2: "Signature spoofing",
         3: "Voltage injection",
         4: "Signature dropping",
-        5: "Signature dropping",
+        5: "Spoof + voltage injection",
     }
     for mode in sorted(mode_results):
         group = [r for r in out_rows if r["mode"] == mode]

@@ -88,4 +88,4 @@ the frames, and the plot + report are regenerated.
 | 2 | Signature spoofing | Auth blocked |
 | 3 | Voltage injection (999 V) | injection_detected raised |
 | 4 | Signature dropping | Auth blocked |
-| 5 | Signature dropping | Auth blocked |
+| 5 | Spoof + voltage injection | Auth blocked + injection_detected raised |
