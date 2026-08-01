@@ -1,0 +1,7 @@
+attack_mode,description,final_state,final_soc,max_replay,max_injection
+0,No attack (baseline),5,85.0,0,0
+1,Replay attack,5,85.0,1,0
+2,Signature spoofing,2,0.0,0,0
+3,Voltage injection,5,85.0,0,1
+4,Signature dropping,2,0.0,0,0
+5,Signature dropping,2,0.0,0,0

@@ -5,7 +5,8 @@ from crypto.certs.certificate import (
 )
 
 from crypto.crypto_utils.signatures import (
-    generate_keypair
+    generate_keypair,
+    sign_message
 )
 
 from crypto.crypto_utils.key_serialization import (
@@ -20,44 +21,53 @@ from crypto.auth.verifier import (
     verify_challenge_response
 )
 
-from can.attacks.spoofing_attack import (
-    SpoofingAttack
-)
+
+def test_spoofing_attack_detected():
+
+    root_ca = RootCA()
+
+    _, battery_public_key = generate_keypair()
+
+    certificate = create_certificate(
+        root_ca=root_ca,
+        battery_id="BAT001",
+        manufacturer_id="THAPAR",
+        battery_public_key=serialize_public_key(
+            battery_public_key
+        ),
+        issue_date="2026-06-01",
+        expiry_date="2031-06-01"
+    )
+
+    challenge = create_challenge()
+
+    attacker_private_key, _ = generate_keypair()
+
+    challenge_data = (
+        challenge.nonce
+        + str(challenge.timestamp).encode()
+    )
+
+    fake_signature = sign_message(
+        attacker_private_key,
+        challenge_data
+    )
+
+    result = verify_challenge_response(
+        certificate,
+        challenge,
+        fake_signature
+    )
+
+    assert result is False
+
+    print(
+        "\n[PASS]"
+        " Spoofing attack detected -"
+        " attacker signature rejected"
+    )
 
 
-root_ca = RootCA()
+if __name__ == "__main__":
 
-battery_private_key, battery_public_key = generate_keypair()
-
-certificate = create_certificate(
-    root_ca=root_ca,
-    battery_id="BAT001",
-    manufacturer_id="THAPAR",
-    battery_public_key=serialize_public_key(
-        battery_public_key
-    ),
-    issue_date="2026-06-01",
-    expiry_date="2031-06-01"
-)
-
-challenge = create_challenge()
-
-attack = SpoofingAttack()
-
-fake_signature = attack.create_fake_signature(
-    challenge
-)
-
-result = verify_challenge_response(
-    certificate,
-    challenge,
-    fake_signature
-)
-
-if result:
-
-    print("SPOOFING SUCCEEDED")
-
-else:
-
-    print("SPOOFING ATTACK DETECTED")
+    test_spoofing_attack_detected()

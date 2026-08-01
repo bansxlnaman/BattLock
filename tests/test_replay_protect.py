@@ -9,11 +9,11 @@ def test_replay():
 
     counter = 1
 
-    assert replay.is_valid(counter)
+    assert replay.validate(counter)
 
-    replay.update(counter)
+    assert not replay.validate(counter)
 
-    assert not replay.is_valid(counter)
+    assert replay.validate(counter + 1)
 
     print(
         "\n[PASS]"

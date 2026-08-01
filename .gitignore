@@ -21,3 +21,9 @@ htmlcov/
 .DS_Store
 
 .ruff_cache/
+
+# Runtime logs and metrics (regenerated on every run)
+logs/
+
+# MATLAB Simulink build artifacts
+slprj/
