@@ -16,11 +16,15 @@ function make_integration_plots(verified_csv, plot_path, report_path)
         stairs(g.time, g.py_replay, 'r-', 'LineWidth', 1.5);
         stairs(g.time, g.py_injection, 'm-', 'LineWidth', 1.5);
         stairs(g.time, g.model_soc/85, 'g-', 'LineWidth', 1.5);
+        stairs(g.time, g.model_auth, 'b--', 'LineWidth', 1.2);
+        stairs(g.time, g.model_replay, 'r--', 'LineWidth', 1.2);
+        stairs(g.time, g.model_injection, 'm--', 'LineWidth', 1.2);
         ylim([-0.2 1.4]);
         grid on;
-        title(sprintf('mode %d (%s)  -  Python verdict', m, descriptions(m)));
+        title(sprintf('mode %d (%s)  -  solid=Python  dashed=Simulink', m, descriptions(m)));
         xlabel('Time (s)'); ylabel('0/1 flag (SOC/85)');
-        legend({'auth','replay','injection','SOC/85'}, 'Location','south');
+        legend({'auth (Py)','replay (Py)','injection (Py)','SOC/85', ...
+                'auth (Sim)','replay (Sim)','injection (Sim)'}, 'Location','south');
     end
     sgtitle('BattLock Integration - Python verifies Simulink CAN frames');
     saveas(f, plot_path);
