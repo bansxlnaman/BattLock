@@ -91,6 +91,8 @@ mode  attack                      py_auth  mdl_auth  agree
 - `py_*` = verdict from **our Python code**
 - `mdl_*` = verdict from the **Simulink model** (independent)
 - They match → the model faithfully represents our real system
+- Telemetry is blocked for EVERY attack mode — only the normal baseline
+  streams SOC. Replay and injection raise the flag AND stop telemetry.
 
 ### The plot (2 rows, 6 columns)
 
@@ -222,7 +224,8 @@ counter), `Attack_Module` (can corrupt signature/counter/voltage),
   the right condition holds.
 - **Replay_Protection:** rejects any counter that isn't strictly increasing.
 - **Injection_Detection:** flags voltage above 100 V.
-- **Telemetry:** only outputs SOC when state == 5 (ACTIVE_SESSION).
+- **Telemetry:** only outputs SOC when state == 5 (ACTIVE_SESSION) AND no
+  replay/injection detected — so a detected attack stops the data too.
 
 Anchor phrase: **"Battery proves who it is, the attacker tries to break
 that, and the system catches it."**

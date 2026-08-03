@@ -84,8 +84,12 @@ the frames, and the plot + report are regenerated.
 | Mode | Attack | Verified result |
 |------|--------|-----------------|
 | 0 | None (baseline) | Auth OK, telemetry streams |
-| 1 | Replay (stale counter) | replay_detected raised |
-| 2 | Signature spoofing | Auth blocked |
-| 3 | Voltage injection (999 V) | injection_detected raised |
-| 4 | Signature dropping | Auth blocked |
+| 1 | Replay (stale counter) | replay_detected raised, telemetry blocked |
+| 2 | Signature spoofing | Auth blocked, telemetry blocked |
+| 3 | Voltage injection (999 V) | injection_detected raised, telemetry blocked |
+| 4 | Signature dropping | Auth blocked, telemetry blocked |
 | 5 | Spoof + voltage injection | Auth blocked + injection_detected raised |
+
+Telemetry is gated on ACTIVE_SESSION (`state == 5`) AND no replay/injection
+detected. Replay and injection detection feed the Telemetry gate, so a
+detected attack stops telemetry as well as raising the dashboard flag.
