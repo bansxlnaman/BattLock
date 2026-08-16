@@ -1,10 +1,19 @@
 """
-Generate publication-ready plots for all 12 BattLock attack modes.
+Generate the two side-by-side verification plots for all BattLock attack
+modes, matching the style of the MATLAB make_integration_plots.m used in the
+previous presentation:
+
+    Plot 1 (integration_plot_all.png):  Python verifier verdicts
+    Plot 2 (simulink_plot_all.png):     Simulink model verdicts
+
+Each plot shows one subplot per mode (0..11) with the same colors as the
+MATLAB version: auth = blue, replay = red, injection = magenta, SOC/85 = green.
 
 Input:  simulink/frames_verified_all.csv
 Outputs:
-    - simulink/integration_plot_all.png   (overview grid)
-    - simulink/modes_overview.png         (attack-mode summary bar chart)
+    - simulink/integration_plot_all.png
+    - simulink/simulink_plot_all.png
+    - simulink/modes_overview.png   (summary bar chart)
 
 Run with:
     PYTHONPATH=. python simulink/plot_all_modes.py
@@ -35,11 +44,13 @@ DESCRIPTIONS = {
     11: "Cert Tamper",
 }
 
+# Colors match make_integration_plots.m:
+# auth 'b-', replay 'r-', injection 'm-', SOC/85 'g-'
 COLORS = {
-    "auth": "#2ca02c",
+    "auth": "#1f77b4",
     "replay": "#d62728",
-    "injection": "#ff7f0e",
-    "soc": "#1f77b4",
+    "injection": "#ff00ff",
+    "soc": "#2ca02c",
 }
 
 
@@ -68,42 +79,48 @@ def per_mode_summary(rows):
     return summary
 
 
-def plot_mode_grid(rows, out_path):
+def _plot_one_mode(ax, g, keys):
+    """Step-plot one mode using the given column keys."""
+    t = [r["time"] for r in g]
+    ax.step(t, [r[keys["auth"]] for r in g],
+            where="post", color=COLORS["auth"], linewidth=1.8, label="auth")
+    ax.step(t, [r[keys["replay"]] for r in g],
+            where="post", color=COLORS["replay"], linewidth=1.5, label="replay")
+    ax.step(t, [r[keys["injection"]] for r in g],
+            where="post", color=COLORS["injection"], linewidth=1.5, label="injection")
+    ax.step(t, [r["model_soc"] / 85.0 for r in g],
+            where="post", color=COLORS["soc"], linewidth=1.2,
+            linestyle="--", label="SOC/85")
+
+
+def plot_verdicts(rows, out_path, column_keys, title, legend_loc="lower right"):
+    """
+    One subplot per mode, side by side.
+    column_keys: {'auth','replay','injection'} -> CSV column names.
+    """
     modes = sorted({int(r["mode"]) for r in rows})
     n = len(modes)
     cols = 4
     rows_n = int(np.ceil(n / cols))
 
-    fig, axes = plt.subplots(rows_n, cols, figsize=(18, 10), sharey=True)
+    fig, axes = plt.subplots(rows_n, cols, figsize=(18, 9), sharey=True)
     axes = axes.flatten()
 
     for idx, m in enumerate(modes):
         ax = axes[idx]
         g = [r for r in rows if int(r["mode"]) == m]
-        t = [r["time"] for r in g]
-
-        t = [r["time"] for r in g]
-        ax.step(t, [r["py_auth"] for r in g],
-                where="post", color=COLORS["auth"], linewidth=1.8, label="auth")
-        ax.step(t, [r["py_replay"] for r in g],
-                where="post", color=COLORS["replay"], linewidth=1.5, label="replay")
-        ax.step(t, [r["py_injection"] for r in g],
-                where="post", color=COLORS["injection"], linewidth=1.5, label="injection")
-        ax.step(t, [r["model_soc"] / 85.0 for r in g],
-                where="post", color=COLORS["soc"], linewidth=1.2,
-                linestyle="--", label="SOC/85")
-
+        _plot_one_mode(ax, g, column_keys)
         ax.set_ylim(-0.2, 1.4)
         ax.set_title(f"mode {m}: {DESCRIPTIONS[m]}", fontsize=10)
         ax.set_xlabel("time (s)", fontsize=8)
         ax.grid(True, alpha=0.3)
         if idx == 0:
-            ax.legend(loc="upper right", fontsize=7)
+            ax.legend(loc=legend_loc, fontsize=8)
 
     for idx in range(n, len(axes)):
         axes[idx].axis("off")
 
-    fig.suptitle("BattLock verification verdicts across all attack modes", fontsize=14)
+    fig.suptitle(title, fontsize=14)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(out_path, dpi=200)
     plt.close()
@@ -143,7 +160,18 @@ def main():
     rows = read_verified(verified_csv)
     summary = per_mode_summary(rows)
 
-    plot_mode_grid(rows, os.path.join(simdir, "integration_plot_all.png"))
+    plot_verdicts(
+        rows,
+        os.path.join(simdir, "integration_plot_all.png"),
+        {"auth": "py_auth", "replay": "py_replay", "injection": "py_injection"},
+        "BattLock Integration - Python verifier verdicts for all 12 modes",
+    )
+    plot_verdicts(
+        rows,
+        os.path.join(simdir, "simulink_plot_all.png"),
+        {"auth": "model_auth", "replay": "model_replay", "injection": "model_injection"},
+        "BattLock Integration - Simulink model verdicts for all 12 modes",
+    )
     plot_summary_bars(summary, os.path.join(simdir, "modes_overview.png"))
 
 
