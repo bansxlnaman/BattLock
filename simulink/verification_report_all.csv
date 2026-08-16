@@ -1,0 +1,13 @@
+mode,description,py_auth,model_auth,py_replay,model_replay,py_injection,model_injection,agreement
+0,No attack (baseline),1,1,0,0,0,0,YES
+1,Replay attack,1,1,1,1,0,0,YES
+2,Signature spoofing,0,0,0,0,0,0,YES
+3,Voltage injection,1,1,0,0,1,1,YES
+4,Signature dropping,0,0,0,0,0,0,YES
+5,Spoof + voltage injection,0,0,0,0,1,1,YES
+6,MITM telemetry tamper,0,1,1,0,0,1,NO
+7,Delay / reorder,0,1,1,1,0,0,NO
+8,Fuzzing,0,0,0,0,0,1,NO
+9,Session hijacking,0,1,0,1,0,0,NO
+10,Threshold evasion,0,1,0,0,0,1,NO
+11,Certificate tampering,0,0,0,0,0,0,YES
