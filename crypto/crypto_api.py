@@ -91,9 +91,15 @@ def sign_nonce(nonce: bytes, key_manager=None) -> bytes:
     """
     Sign a nonce/challenge and return the raw 64-byte R||S signature
     (the exact bytes that travel on the CAN bus).
+
+    SoftwareKeys produces DER; the ATECC608B produces raw R||S directly.
+    Both are normalized to raw here so the CAN format never changes.
     """
     km = key_manager or _get_key_manager()
-    return der_to_raw(km.sign(nonce))
+    sig = km.sign(nonce)
+    if len(sig) == RAW_SIG_LEN:
+        return sig            # hardware path: already raw R||S
+    return der_to_raw(sig)    # software path: DER -> raw
 
 
 def get_public_key_bytes(key_manager=None) -> bytes:
