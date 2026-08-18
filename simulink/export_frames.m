@@ -1,4 +1,10 @@
 function frames = export_frames(outdir)
+% EXPORT_FRAMES  Export Simulink frames for attack modes 0-5.
+%
+% The model (Battlock_System2.slx) currently implements modes 0-5.
+% Modes 6-11 are generated separately by generate_extra_modes.py from the
+% real BattLock Python attack classes.  run_integration.m combines both
+% sources and verifies/plots all 12 modes.
 
     if nargin < 1
         outdir = pwd;

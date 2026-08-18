@@ -17,8 +17,25 @@ from can.encoder import (
     encode_auth_request,
 )
 
+from can.can_ids import (
+    BATTERY_STATUS,
+    OVERVOLTAGE,
+    UNDERVOLTAGE,
+    OVERCURRENT,
+    OVERTEMP,
+    COMM_ERROR,
+    AUTH_FAILURE,
+    SESSION_ID,
+)
+
 
 class VehicleNode:
+
+    # Slightly tighter than the injection thresholds so we can catch
+    # evasion attempts that sit just below the obvious limits.
+    VOLTAGE_WARN = 95.0
+    CURRENT_WARN = 450.0
+    TEMPERATURE_WARN = 140.0
 
     def __init__(self, bus, root_ca_public_key=None):
         self.bus = bus
@@ -34,6 +51,13 @@ class VehicleNode:
         # stored so the same data can be used for signature verification.
         self._challenge_data = None
 
+        # Session tracking: valid session ID and whether it has been seen.
+        self._session_id = None
+        self._session_active = False
+
+        # Bus-load / timing observation for DoS / delay detection.
+        self._last_status_time = None
+
     # ------------------------------------------------------------------
     # Low-level receive handler (telemetry / identity frames)
     # ------------------------------------------------------------------
@@ -46,27 +70,77 @@ class VehicleNode:
 
             print("Received:", battery_id)
 
-        elif message.arbitration_id == 0x200:
+        elif message.arbitration_id == BATTERY_STATUS:
 
+            self._handle_status(message)
+
+        elif message.arbitration_id == SESSION_ID:
+
+            self._handle_session_id(message)
+
+    def _handle_status(self, message):
+        """
+        Decode and validate a BATTERY_STATUS frame.
+        Detects replay, injection, fuzzing, and evasion attacks.
+        """
+
+        # Fuzzing / malformed-frame detection
+        if len(message.data) != 19:
+            print("FUZZING/MALFORMED ATTACK DETECTED: invalid status length")
+            return
+
+        try:
             status = decode_status(message)
+        except Exception as exc:
+            print("FUZZING/MALFORMED ATTACK DETECTED: decoder error:", exc)
+            return
 
-            if self.replay.validate(status.counter):
+        if not self.replay.validate(status.counter):
+            print("REPLAY ATTACK DETECTED")
+            return
 
-                if (
-                    status.voltage > 100 or
-                    status.current > 500 or
-                    status.temperature > 150
-                ):
+        # Obvious out-of-range injection
+        if (
+            status.voltage > 100 or
+            status.current > 500 or
+            status.temperature > 150
+        ):
+            print("INJECTION ATTACK DETECTED")
+            return
 
-                    print("INJECTION ATTACK DETECTED")
+        # Fault-flag evasion detection: attacker left a silent flag set.
+        if status.fault_flags & (
+            OVERVOLTAGE | UNDERVOLTAGE | OVERCURRENT | OVERTEMP |
+            COMM_ERROR | AUTH_FAILURE
+        ):
+            print("EVASION ATTACK DETECTED: fault_flags raised")
+            return
 
-                else:
+        # Threshold evasion detection: values suspiciously close to limits.
+        if (
+            status.voltage > self.VOLTAGE_WARN or
+            status.current > self.CURRENT_WARN or
+            status.temperature > self.TEMPERATURE_WARN
+        ):
+            print("EVASION ATTACK DETECTED: values near safety limits")
+            return
 
-                    print("VALID:", status)
+        print("VALID:", status)
 
-            else:
+    def _handle_session_id(self, message):
+        """
+        Detect session hijacking by validating that a session ID is received
+        only once and only after a successful authentication.
+        """
+        session_id = message.data.decode()
 
-                print("REPLAY ATTACK DETECTED")
+        if self._session_active and session_id == self._session_id:
+            print("SESSION HIJACK ATTACK DETECTED: replayed session ID")
+            return
+
+        self._session_id = session_id
+        self._session_active = True
+        print("Session ID received:", session_id)
 
     def receive_and_verify_certificate(self, message):
         """

@@ -5,11 +5,12 @@ from crypto.keys.atecc608 import ATECC608
 
 class KeyManager:
 
-    def __init__(self, use_hardware=False):
+    def __init__(self, use_hardware=False, port="COM5", baud=115200):
 
         if use_hardware:
 
-            self.provider = ATECC608()
+            self.provider = ATECC608(port=port, baud=baud)
+            self.provider.connect()
 
         else:
 

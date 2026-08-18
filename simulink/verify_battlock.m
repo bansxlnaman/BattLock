@@ -74,7 +74,7 @@ function verify_battlock()
             legend({'state','replay','injection','soc'}, 'Location','south');
         end
     end
-    sgtitle('BattLock Simulink Verification - Battlock_System2');
+    sgtitle('BattLock Simulink Verification - Battlock_System2 (modes 0-5)');
     saveas(f, 'verification_plot.png');
     close(f);
 
@@ -88,4 +88,5 @@ function verify_battlock()
     fclose(fid);
 
     fprintf('\nDONE. Wrote verification_plot.png and verification_report.csv\n');
+    fprintf('For modes 6-11, run simulink/generate_extra_modes.py and simulink/plot_all_modes.py.\n');
 end
