@@ -33,6 +33,68 @@ def decode_status(message):
     )
 
 
+# ----------------------------------------------------------------------------
+# Status A/B/C split (Phase 3).
+#
+# Each frame carries only PART of a BatteryStatus, so the per-frame decoders
+# honestly return partial dicts. status_from_frames() is the aggregator that
+# recombines the three frames into a complete BatteryStatus object -- the same
+# type the existing vehicle/replay/injection logic already expects (attribute
+# access: status.counter, status.voltage, ...).
+# ----------------------------------------------------------------------------
+
+def decode_status_a(message):
+    """Decode 0x200 -> {counter, soc, soh, fault_flags}."""
+    counter, soc, soh, fault_flags, _reserved = struct.unpack(
+        "<IBBBB",
+        message.data
+    )
+    return {
+        "counter": counter,
+        "soc": soc,
+        "soh": soh,
+        "fault_flags": fault_flags,
+    }
+
+
+def decode_status_b(message):
+    """Decode 0x201 -> {voltage, current}."""
+    voltage, current = struct.unpack("<ff", message.data)
+    return {
+        "voltage": voltage,
+        "current": current,
+    }
+
+
+def decode_status_c(message):
+    """Decode 0x202 -> {temperature} (ignores the 4 reserved bytes)."""
+    temperature = struct.unpack("<f", message.data[:4])[0]
+    return {
+        "temperature": temperature,
+    }
+
+
+def status_from_frames(status_a, status_b, status_c):
+    """Aggregate the three status frames into one BatteryStatus object.
+
+    Accepts the three CANMessages (0x200, 0x201, 0x202) and returns a
+    BatteryStatus with the same attributes the simulation already reads.
+    """
+    a = decode_status_a(status_a)
+    b = decode_status_b(status_b)
+    c = decode_status_c(status_c)
+
+    return BatteryStatus(
+        counter=a["counter"],
+        voltage=b["voltage"],
+        current=b["current"],
+        temperature=c["temperature"],
+        soc=a["soc"],
+        soh=a["soh"],
+        fault_flags=a["fault_flags"],
+    )
+
+
 def decode_nonce(message):
 
     return message.data
