@@ -75,18 +75,50 @@ def reassemble(frames):
     """Rebuild the original payload from a list of fragment CANMessages.
 
     Frames may arrive out of order; they are sorted by sequence number.
-    Raises ValueError if the first frame is missing or the collected byte
-    count is short of the declared total length.
+
+    Before trusting the byte content, the fragment set is validated:
+      * every frame shares the same arbitration_id
+      * every frame is <= 8 bytes (Classic CAN) and non-empty
+      * sequence numbers are exactly 0, 1, 2, ... N-1 -- no duplicates,
+        no gaps, nothing out of range
+      * the first frame carries a full 3-byte header
+
+    Raises ValueError on any violation, or if the collected byte count
+    is short of the length declared in the first frame.
     """
     if not frames:
         raise ValueError("reassemble() received no frames")
 
+    arb_id = frames[0].arbitration_id
+    for f in frames:
+        if f.arbitration_id != arb_id:
+            raise ValueError(
+                "frames have inconsistent arbitration_id: "
+                f"{f.arbitration_id} vs {arb_id}"
+            )
+        if len(f.data) == 0:
+            raise ValueError("frame has empty data (no sequence byte)")
+        if len(f.data) > 8:
+            raise ValueError(
+                f"frame exceeds 8-byte Classic CAN limit: {len(f.data)} bytes"
+            )
+
     # Order by the sequence byte (frame.data[0]); first frame is sequence 0.
     ordered = sorted(frames, key=lambda f: f.data[0])
 
+    sequences = [f.data[0] for f in ordered]
+    expected = list(range(len(ordered)))
+    if sequences != expected:
+        if len(set(sequences)) != len(sequences):
+            raise ValueError(f"duplicate sequence number(s): {sequences}")
+        raise ValueError(
+            f"missing or non-contiguous sequence number(s): "
+            f"got {sequences}, expected {expected}"
+        )
+
     first = ordered[0]
-    if first.data[0] != 0:
-        raise ValueError("missing first frame (sequence 0)")
+    if len(first.data) < 3:
+        raise ValueError("first frame too short to contain length header")
 
     total_len = first.data[1] | (first.data[2] << 8)
 

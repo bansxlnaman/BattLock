@@ -62,6 +62,49 @@ def test_out_of_order_reassembly():
     assert reassemble(list(reversed(frames))) == payload
 
 
+def test_reassemble_rejects_duplicate_sequence():
+    frames = fragment(NONCE, secrets.token_bytes(20))
+    # Duplicate frame 1's sequence onto a copy of frame 0's data slot.
+    corrupted = frames[:2] + [frames[1]] + frames[2:]
+    try:
+        reassemble(corrupted)
+        assert False, "expected ValueError for duplicate sequence number"
+    except ValueError as e:
+        assert "duplicate" in str(e).lower()
+
+
+def test_reassemble_rejects_missing_sequence():
+    frames = fragment(NONCE, secrets.token_bytes(20))
+    missing = [frames[0], frames[2]]  # drop frame 1, leaving a gap
+    try:
+        reassemble(missing)
+        assert False, "expected ValueError for missing sequence number"
+    except ValueError as e:
+        assert "missing" in str(e).lower() or "non-contiguous" in str(e).lower()
+
+
+def test_reassemble_rejects_oversized_frame():
+    frames = fragment(NONCE, secrets.token_bytes(10))
+    from can.can_message import CANMessage
+    frames[0] = CANMessage(NONCE, frames[0].data + b"\x00" * 5)  # >8 bytes
+    try:
+        reassemble(frames)
+        assert False, "expected ValueError for oversized frame"
+    except ValueError as e:
+        assert "8-byte" in str(e) or "exceeds" in str(e).lower()
+
+
+def test_reassemble_rejects_mixed_arbitration_id():
+    frames = fragment(NONCE, secrets.token_bytes(20))
+    from can.can_message import CANMessage
+    frames[1] = CANMessage(SIGNATURE, frames[1].data)  # wrong ID mixed in
+    try:
+        reassemble(frames)
+        assert False, "expected ValueError for inconsistent arbitration_id"
+    except ValueError as e:
+        assert "arbitration_id" in str(e).lower()
+
+
 def test_canbus_fifo():
     bus = CANBus()
     assert bus.receive() is None
@@ -79,6 +122,10 @@ ALL_TESTS = [
     test_edge_sizes,
     test_small_payload_single_frame,
     test_out_of_order_reassembly,
+    test_reassemble_rejects_duplicate_sequence,
+    test_reassemble_rejects_missing_sequence,
+    test_reassemble_rejects_oversized_frame,
+    test_reassemble_rejects_mixed_arbitration_id,
     test_canbus_fifo,
 ]
 
