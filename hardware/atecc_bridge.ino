@@ -1,5 +1,5 @@
 /*
- * BattLock ATECC608B serial bridge (runs on the BATTERY ESP32, COM3).
+ * BattLock ATECC608B serial bridge (runs on the BATTERY ESP32, COM5).
  *
  * Lets the laptop's Python crypto API drive the real secure element over
  * USB serial. This is a provisioning/test tool — NOT vehicle.ino /
