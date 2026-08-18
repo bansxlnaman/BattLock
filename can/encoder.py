@@ -6,6 +6,9 @@ from can.can_message import CANMessage
 from can.can_ids import (
     AUTH_REQUEST,
     BATTERY_STATUS,
+    BATTERY_STATUS_A,
+    BATTERY_STATUS_B,
+    BATTERY_STATUS_C,
     NONCE,
     SIGNATURE,
     AUTH_RESULT
@@ -39,6 +42,63 @@ def encode_status(status):
 
     return CANMessage(
         arbitration_id=BATTERY_STATUS,
+        data=payload
+    )
+
+
+# ----------------------------------------------------------------------------
+# Status A/B/C split (Phase 3).
+#
+# The single 19-byte encode_status() above cannot exist on a real Classic CAN
+# bus (8-byte payload limit). These three encoders split BatteryStatus into
+# three <=8-byte frames. encode_status() is kept for backward compatibility
+# until every caller is migrated.
+#
+#   0x200 STATUS_A : [0..3] counter | [4] soc | [5] soh | [6] fault | [7] rsv
+#   0x201 STATUS_B : [0..3] voltage | [4..7] current
+#   0x202 STATUS_C : [0..3] temperature | [4..7] reserved
+# ----------------------------------------------------------------------------
+
+def encode_status_a(status):
+
+    payload = struct.pack(
+        "<IBBBB",
+        status.counter,
+        status.soc,
+        status.soh,
+        status.fault_flags,
+        0                       # reserved byte, keeps the frame at 8 bytes
+    )
+
+    return CANMessage(
+        arbitration_id=BATTERY_STATUS_A,
+        data=payload
+    )
+
+
+def encode_status_b(status):
+
+    payload = struct.pack(
+        "<ff",
+        status.voltage,
+        status.current
+    )
+
+    return CANMessage(
+        arbitration_id=BATTERY_STATUS_B,
+        data=payload
+    )
+
+
+def encode_status_c(status):
+
+    payload = struct.pack(
+        "<f4x",                 # temperature + 4 reserved bytes = 8 bytes
+        status.temperature
+    )
+
+    return CANMessage(
+        arbitration_id=BATTERY_STATUS_C,
         data=payload
     )
 
