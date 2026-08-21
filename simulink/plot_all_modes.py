@@ -140,6 +140,55 @@ def plot_verdicts(rows, out_path, column_keys, title, legend_loc="lower right"):
     print(f"Wrote {out_path}")
 
 
+def plot_detection_matrix(rows, out_path):
+    """
+    Heatmap matrix: one cell per (mode, detection flag).
+    Green = flag clear (OK), red = flag fired (attack detected).
+    Reads directly from py_* verdict columns so no overlaps occur.
+    """
+    modes = sorted({int(r["mode"]) for r in rows})
+
+    # Flags: value 1 = "fired / bad" for red.
+    flag_defs = [
+        ("auth",       "auth failed",   lambda r: 1 - int(r["py_auth"])),
+        ("replay",     "replay",        lambda r: int(r["py_replay"])),
+        ("injection",  "injection",     lambda r: int(r["py_injection"])),
+        ("cert",       "cert failed",   lambda r: 1 - int(r.get("py_cert_ok", 1))),
+        ("session",    "session",       lambda r: 1 - int(r.get("py_session_ok", 1))),
+        ("malformed",  "malformed",     lambda r: int(r.get("py_malformed", 0))),
+    ]
+
+    matrix = np.zeros((len(flag_defs), len(modes)))
+    for j, m in enumerate(modes):
+        group = [r for r in rows if int(r["mode"]) == m]
+        for i, (key, label, fn) in enumerate(flag_defs):
+            matrix[i, j] = max(fn(r) for r in group)
+
+    fig, ax = plt.subplots(figsize=(12, 4.5))
+    im = ax.imshow(matrix, cmap="RdYlGn", vmin=0, vmax=1, aspect="auto")
+
+    ax.set_xticks(range(len(modes)))
+    ax.set_xticklabels([f"{m}" for m in modes], fontsize=10)
+    ax.set_yticks(range(len(flag_defs)))
+    ax.set_yticklabels([label for _, label, _ in flag_defs], fontsize=10)
+
+    ax.set_xlabel("Attack mode", fontsize=11)
+    ax.set_title("Detection matrix — which check fires for each attack mode",
+                 fontsize=13)
+
+    for i in range(len(flag_defs)):
+        for j in range(len(modes)):
+            color = "white" if matrix[i, j] < 0.5 else "black"
+            ax.text(j, i, "✗" if matrix[i, j] > 0.5 else "✓",
+                    ha="center", va="center", fontsize=13, color=color)
+
+    ax.grid(False)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200)
+    plt.close()
+    print(f"Wrote {out_path}")
+
+
 def plot_summary_bars(summary, out_path):
     modes = sorted(summary.keys())
     labels = [DESCRIPTIONS[m] for m in modes]
@@ -186,6 +235,7 @@ def main():
         "BattLock Integration - Simulink model verdicts for all 12 modes",
     )
     plot_summary_bars(summary, os.path.join(simdir, "modes_overview.png"))
+    plot_detection_matrix(rows, os.path.join(simdir, "detection_matrix.png"))
 
 
 if __name__ == "__main__":
