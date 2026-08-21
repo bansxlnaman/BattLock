@@ -48,6 +48,17 @@ def _read_csv(path):
     return rows
 
 
+def _hint(row, key, default):
+    """Read an attack-type hint column from a row, tolerating missing keys."""
+    val = row.get(key)
+    if val is None or val == "":
+        return default
+    try:
+        return int(float(val))
+    except (TypeError, ValueError):
+        return default
+
+
 def verify_all(frames_csv, extra_csv, out_csv, report_csv):
     all_rows = _read_csv(frames_csv) + _read_csv(extra_csv)
 
@@ -72,6 +83,12 @@ def verify_all(frames_csv, extra_csv, out_csv, report_csv):
 
         py_auth = 1 if sig_ok else 0
 
+        # Attack-type hints (from Python-generated modes 6-11; defaults for
+        # Simulink modes 0-5 which don't carry them).
+        cert_ok = _hint(row, "cert_ok", 1)
+        session_ok = _hint(row, "session_ok", 1)
+        malformed = _hint(row, "malformed", 0)
+
         out_rows.append({
             "mode": mode,
             "time": float(row["time"]),
@@ -79,6 +96,9 @@ def verify_all(frames_csv, extra_csv, out_csv, report_csv):
             "py_replay": 0 if replay_ok else 1,
             "py_injection": 1 if injection else 0,
             "py_auth": py_auth,
+            "py_cert_ok": cert_ok,
+            "py_session_ok": session_ok,
+            "py_malformed": malformed,
             "model_auth": int(float(row["model_auth"])),
             "model_replay": int(float(row["model_replay"])),
             "model_injection": int(float(row["model_injection"])),
@@ -96,7 +116,8 @@ def verify_all(frames_csv, extra_csv, out_csv, report_csv):
         writer = csv.writer(f)
         writer.writerow([
             "mode", "description", "py_auth", "model_auth",
-            "py_replay", "model_replay", "py_injection", "model_injection", "agreement"
+            "py_replay", "model_replay", "py_injection", "model_injection",
+            "py_cert_ok", "py_session_ok", "py_malformed", "agreement"
         ])
         for mode in sorted(mode_results):
             group = [r for r in out_rows if r["mode"] == mode]
@@ -106,6 +127,9 @@ def verify_all(frames_csv, extra_csv, out_csv, report_csv):
             mdl_rep = max(r["model_replay"] for r in group)
             py_inj = max(r["py_injection"] for r in group)
             mdl_inj = max(r["model_injection"] for r in group)
+            py_cert = max(r["py_cert_ok"] for r in group)
+            py_sess = max(r["py_session_ok"] for r in group)
+            py_malf = max(r["py_malformed"] for r in group)
             agree = (
                 py_auth == mdl_auth
                 and py_rep == mdl_rep
@@ -113,7 +137,8 @@ def verify_all(frames_csv, extra_csv, out_csv, report_csv):
             )
             writer.writerow([
                 mode, DESCRIPTIONS[mode], py_auth, mdl_auth,
-                py_rep, mdl_rep, py_inj, mdl_inj, "YES" if agree else "NO"
+                py_rep, mdl_rep, py_inj, mdl_inj,
+                py_cert, py_sess, py_malf, "YES" if agree else "NO"
             ])
 
     print(f"Wrote {len(out_rows)} verified frames to {out_csv}")

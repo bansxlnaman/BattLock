@@ -55,8 +55,13 @@ VOLTAGE_THRESHOLD = 100.0
 
 
 def _status_to_row(mode, time_, nonce, signature, status, model_state,
-                   model_auth, model_replay, model_injection, model_soc):
-    """Build a frames.csv-style row dict from a BatteryStatus."""
+                   model_auth, model_replay, model_injection, model_soc,
+                   cert_ok=1, session_ok=1, malformed=0):
+    """Build a frames.csv-style row dict from a BatteryStatus.
+
+    cert_ok / session_ok / malformed are attack-type hints the verifier
+    uses to emit the py_cert_ok / py_session_ok / py_malformed verdicts.
+    """
     return {
         "mode": mode,
         "time": round(time_, 6),
@@ -69,6 +74,9 @@ def _status_to_row(mode, time_, nonce, signature, status, model_state,
         "model_replay": model_replay,
         "model_injection": model_injection,
         "model_soc": model_soc,
+        "cert_ok": cert_ok,
+        "session_ok": session_ok,
+        "malformed": malformed,
     }
 
 
@@ -180,6 +188,9 @@ def mode_8_fuzzing():
         "model_replay": 0,
         "model_injection": 1,
         "model_soc": 0,
+        "cert_ok": 1,
+        "session_ok": 1,
+        "malformed": 1,
     })
     return rows
 
@@ -227,6 +238,7 @@ def mode_9_session_hijack():
         "nonce": 0, "signature": 0, "counter": 0, "voltage": 0.0,
         "model_state": 5, "model_auth": 1, "model_replay": 1,
         "model_injection": 0, "model_soc": 0,
+        "cert_ok": 1, "session_ok": 0, "malformed": 0,
     })
     return rows
 
@@ -276,6 +288,7 @@ def mode_11_certificate_tampering():
             "nonce": 0, "signature": 0, "counter": 0, "voltage": 0.0,
             "model_state": 2, "model_auth": 1 if ok else 0, "model_replay": 0,
             "model_injection": 0, "model_soc": 0,
+            "cert_ok": 1 if ok else 0, "session_ok": 1, "malformed": 0,
         })
         t += 0.1
     return rows
@@ -292,7 +305,8 @@ def generate_extra_modes(out_path):
 
     fieldnames = [
         "mode", "time", "nonce", "signature", "counter", "voltage",
-        "model_state", "model_auth", "model_replay", "model_injection", "model_soc"
+        "model_state", "model_auth", "model_replay", "model_injection", "model_soc",
+        "cert_ok", "session_ok", "malformed"
     ]
     with open(out_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

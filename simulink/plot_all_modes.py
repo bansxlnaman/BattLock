@@ -51,6 +51,9 @@ COLORS = {
     "replay": "#d62728",
     "injection": "#ff00ff",
     "soc": "#2ca02c",
+    "cert": "#8e44ad",      # purple — certificate verified
+    "session": "#f39c12",   # orange — session fresh
+    "malformed": "#7f8c8d", # gray — fuzz/malformed frame
 }
 
 
@@ -91,6 +94,16 @@ def _plot_one_mode(ax, g, keys):
     ax.step(t, [r["model_soc"] / 85.0 for r in g],
             where="post", color=COLORS["soc"], linewidth=1.2,
             linestyle="--", label="SOC/85")
+    # New distinguishing traces (Python verifier, available in all rows)
+    ax.step(t, [r.get("py_cert_ok", 1) for r in g],
+            where="post", color=COLORS["cert"], linewidth=1.2,
+            linestyle=":", label="cert ok")
+    ax.step(t, [r.get("py_session_ok", 1) for r in g],
+            where="post", color=COLORS["session"], linewidth=1.2,
+            linestyle=":", label="session ok")
+    ax.step(t, [r.get("py_malformed", 0) for r in g],
+            where="post", color=COLORS["malformed"], linewidth=1.5,
+            linestyle="-.", label="malformed")
 
 
 def plot_verdicts(rows, out_path, column_keys, title, legend_loc="lower right"):
